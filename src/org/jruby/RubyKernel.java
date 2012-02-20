@@ -850,12 +850,25 @@ public class RubyKernel {
     
     @JRubyMethod(module = true, visibility = PRIVATE)
     public static RubyBinding binding(ThreadContext context, IRubyObject recv, Block block) {
-        return RubyBinding.newBinding(context.getRuntime(), context.currentBinding(recv));
+        return bindingCommon(context, context.currentBinding(recv));
     }
     
     @JRubyMethod(name = "binding", module = true, visibility = PRIVATE, compat = RUBY1_9)
     public static RubyBinding binding19(ThreadContext context, IRubyObject recv, Block block) {
-        return RubyBinding.newBinding(context.getRuntime(), context.currentBinding());
+        return bindingCommon(context, context.currentBinding());
+    }
+
+    private static RubyBinding bindingCommon(ThreadContext context, Binding binding) {
+        RubyStackTraceElement[] backtrace = context.gatherCallerBacktrace(0);
+
+        if (backtrace.length > 0) {
+            // Set the line to the line *before* the correct one so that line 1 of the
+            // string passed to eval() will be the same as backtrace[0].getLineNumber()
+            binding.setLine(backtrace[0].getLineNumber() - 1);
+            binding.setFile(backtrace[0].getFileName());
+        }
+
+        return RubyBinding.newBinding(context.getRuntime(), binding);
     }
 
     @JRubyMethod(name = {"block_given?", "iterator?"}, module = true, visibility = PRIVATE)
